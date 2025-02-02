@@ -4,10 +4,18 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ShoppingCart, Calendar, BookOpen, Image, DollarSign as DollarSignIcon, Speaker, Users as Users2, Target, Linkedin, Plus } from "lucide-react";
 import { LoadingScreen } from "./LoadingScreen";
 import { AnimatedButton } from "@/components/ui/animated-button";
 import { ChatInterface } from "./ChatInterface";
+import { useToast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -59,6 +67,8 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
   const [showChat, setShowChat] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
   const [customGoal, setCustomGoal] = useState("");
+  const [selectedDomain, setSelectedDomain] = useState(".com");
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     websiteName: "",
     websiteDescription: "",
@@ -67,9 +77,88 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
     traffic: "",
   });
 
+  const domainOptions = [
+    { value: ".com", label: ".com" },
+    { value: ".store", label: ".store" },
+    { value: ".online", label: ".online" },
+    { value: ".xyz", label: ".xyz" },
+  ];
+
   const progress = ((currentStep + 1) / steps.length) * 100;
 
+  const validateCurrentStep = () => {
+    const sanitizeText = (text: string) => {
+      return text.replace(/[\n\r]/g, ' ').replace(/[^\w\s-]/g, '');
+    };
+
+    switch (currentStep) {
+      case 0:
+        if (!formData.websiteName.trim()) {
+          toast({
+            title: "Website name is required",
+            description: "Please enter a name for your website",
+            variant: "destructive",
+          });
+          return false;
+        }
+        setFormData(prev => ({
+          ...prev,
+          websiteName: sanitizeText(prev.websiteName)
+        }));
+        break;
+      case 1:
+        if (!formData.websiteDescription.trim()) {
+          toast({
+            title: "Website description is required",
+            description: "Please enter a description for your website",
+            variant: "destructive",
+          });
+          return false;
+        }
+        setFormData(prev => ({
+          ...prev,
+          websiteDescription: sanitizeText(prev.websiteDescription)
+        }));
+        break;
+      case 2:
+        if (!formData.category) {
+          toast({
+            title: "Category selection is required",
+            description: "Please select a category for your website",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      case 3:
+        if (!formData.goal) {
+          toast({
+            title: "Goal selection is required",
+            description: "Please select a goal for your website",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      case 4:
+        if (!formData.traffic) {
+          toast({
+            title: "Traffic expectation is required",
+            description: "Please select your expected traffic",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
   const handleNext = async () => {
+    if (!validateCurrentStep()) {
+      return;
+    }
+
     await handleAction('button_click', { button_id: 'next_step' });
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
@@ -92,7 +181,6 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
     setShowSuccess(false);
     setShowFinalLoading(true);
     
-    // Ensure all form data is properly validated before passing
     const finalFormData = {
       websiteName: formData.websiteName || 'Untitled Website',
       websiteDescription: formData.websiteDescription || 'No description provided',
@@ -110,6 +198,15 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
       });
       window.dispatchEvent(event);
     }, 3000);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    const sanitizedValue = value.replace(/[\n\r]/g, ' ').replace(/[^\w\s-]/g, '');
+    setFormData(prev => ({
+      ...prev,
+      [name]: sanitizedValue
+    }));
   };
 
   const handleCategoryChange = (category: string) => {
@@ -147,14 +244,38 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
       case 0:
         return (
           <div className="space-y-6 py-6">
-            <Input
-              placeholder="www.yourwebsite.com"
-              value={formData.websiteName}
-              onChange={(e) =>
-                setFormData({ ...formData, websiteName: e.target.value })
-              }
-              className="text-lg py-6 px-4 transition-all duration-300 focus:scale-105"
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <div className="relative flex items-center w-full rounded-md border border-input bg-background ring-offset-background">
+                  <div className="absolute left-3 text-sm text-gray-500 select-none pointer-events-none">
+                    www.
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="yourwebsite"
+                    name="websiteName"
+                    value={formData.websiteName}
+                    onChange={handleInputChange}
+                    className="flex h-12 w-full rounded-md bg-transparent pl-[4.5rem] pr-3 text-lg file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              </div>
+              <Select
+                value={selectedDomain}
+                onValueChange={setSelectedDomain}
+              >
+                <SelectTrigger className="w-[120px] h-12">
+                  <SelectValue placeholder="Select domain" />
+                </SelectTrigger>
+                <SelectContent>
+                  {domainOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         );
       case 1:
@@ -162,10 +283,9 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
           <div className="space-y-6 py-6">
             <Textarea
               placeholder="Write a brief description of your website..."
+              name="websiteDescription"
               value={formData.websiteDescription}
-              onChange={(e) =>
-                setFormData({ ...formData, websiteDescription: e.target.value })
-              }
+              onChange={handleInputChange}
               className="min-h-[100px] text-lg p-4 transition-all duration-300 focus:scale-105"
             />
           </div>
@@ -281,7 +401,7 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-900">
           <div id="form-content" className="space-y-8 max-h-[80vh] overflow-y-auto">
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
@@ -292,7 +412,7 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
                 {steps[currentStep].title}
               </h2>
               <p className="text-muted-foreground">
@@ -305,7 +425,7 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
             <div className="flex justify-end">
               <Button
                 onClick={handleNext}
-                className="w-32 h-12 text-lg hover:scale-105 transition-all duration-300"
+                className="w-32 h-12 text-lg hover:scale-105 transition-all duration-300 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {currentStep === steps.length - 1 ? "Finish" : "Next"}
               </Button>
@@ -315,39 +435,40 @@ export const WebsiteForm = ({ open, onOpenChange }: WebsiteFormProps) => {
       </Dialog>
 
       <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl text-center mb-4">
+        <AlertDialogContent className="max-w-[400px] bg-white dark:bg-gray-900 p-6 rounded-lg">
+          <AlertDialogHeader className="space-y-4">
+            <AlertDialogTitle className="text-2xl font-bold text-center">
               We have found a developer for you!
             </AlertDialogTitle>
             <AlertDialogDescription>
               <div className="flex flex-col items-center space-y-4">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200">
                   <img
                     src="https://www.aurumbureau.com/wp-content/uploads/2020/11/Aurum-Speakers-Bureau-Samy-Kamkar.jpg"
                     alt="Waleed Ajmal"
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="text-center">
-                  <h3 className="font-semibold text-lg">Waleed Ajmal</h3>
-                  <p className="text-sm text-muted-foreground">Full Stack Developer</p>
+                <div className="text-center space-y-1">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Waleed Ajmal</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Full Stack Developer</p>
                 </div>
                 <a
                   href="https://www.linkedin.com/in/waleed-ajmal?originalSubdomain=pk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-accent hover:text-accent/80 transition-colors"
+                  className="flex items-center gap-2 text-[#0077b5] hover:text-[#0077b5]/80 transition-colors text-sm"
                 >
-                  <Linkedin className="w-5 h-5" />
+                  <Linkedin className="w-4 h-4" />
                   <span>View LinkedIn Profile</span>
                 </a>
-                <AnimatedButton 
+                <Button 
                   onClick={handleSuccessClose}
-                  className="mt-4 w-full"
+                  className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 hover:scale-105"
+                  variant="default"
                 >
                   Continue
-                </AnimatedButton>
+                </Button>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
